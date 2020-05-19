@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Karplus-Strong stress tester</title>
+    <script>
+        // Import @padenot's ringbuf.js library for passing
+        // data between AudioWorklet and the main thread
+        // using SharedArrayBuffers in a lock-free way.
+        exports = {};
+    </script>
+    <script src="ringbuf/index.js"></script>
+</head>
+
+<body style="padding: 0px; margin: 0px">
+    <div style="display: flex; flex-direction: row; width: 100%">
+        <div style="flex-basis: 70%;">
+            <div id="vis" style="width: 75%; margin-left: auto; margin-right: auto"></div>
+        </div>
+        <div style="flex-basis: 30%; background-color: #eee; padding: 10px">
+            <div>
+                <button id="start-button" onclick="runExample()" style="width: 100%; height: 100px">Start Audio</button>
+                <button id="pluck-button" onclick="pluck()" style="height: 50px; width:100%; display: none;">Pluck</button>
+                <button id="swipe-button" onclick="swipe()" style="height: 50px; width:100%; display: none;">Swipe</button>
+                <button id="strum-button" onclick="strum()" style="height: 50px; width:100%; display: none;">Strum all</button>
+            </div>
+            <div>
+                <h4>String count:</h4>
+                <button id="10-button" onclick="changeStrings(10)">10</button>
+                <button id="25-button" onclick="changeStrings(25)">25</button>
+                <button id="50-button" onclick="changeStrings(50)">50</button>
+                <button id="100-button" onclick="changeStrings(100)">100</button>
+                <button id="200-button" onclick="changeStrings(200)">200</button>
+                <button id="250-button" onclick="changeStrings(250)">250</button>
+                <button id="400-button" onclick="changeStrings(400)">400</button>
+                <p style="font-size: 0.75em; color: #999">Beware, high string counts might make your computer light on fire.
+                Even the the strings aren't playing, they are all simulating, all the time.</p>
+                <h4>Visualize string state: <input id="vis-checkbox" type="checkbox" onchange="toggleStringVisualization()"/></h4>
+                <p style="font-size: 0.75em; color: #999">Check this box to make the strings animate whenever they
+                are plucked. The animation is based on data which is produced in the audio-processing
+                simulation(s).</p>
+                <h4>Communication channel:</h4>
+                <p style="font-size: 0.75em; color: #999">This data must be sent from the audio processing thread to the main/GUI thread
+                for visualization. There are two options for doing that: Using MessagePort (which creates garbage)
+                or using SharedArrayBuffer (which does not create garbage). This demo is using Paul Adenot's lock-free data structures, which you
+                can <a href="https://github.com/padenot/ringbuf.js">find on Github.</a></p>
+                <div>
+                    <input type="radio" id="choice-port" name="channel" value="port" onchange="changeChannel('port')" />
+                    <label for="choice-port">MessagePort</label>
+                </div>
+                <div>
+                    <input type="radio" id="choice-sab" name="channel" value="sab" onchange="changeChannel('sab')" />
+                    <label for="choice-sab">SharedArrayBuffer</label>
+                </div>
+                <p style="font-size: 0.75em; color: #999"> You need to be using an up-to-date version of Chrome, or
+                    Firefox Nightly with the "bypassCOOP_COEP.insecure.enabled"
+                    flag flipped on to use SharedArrayBuffer.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function URLFromFiles(files) {
+            const promises = files
+                .map((file) => fetch(file)
+                    .then((response) => response.text()));
+
+            return Promise
+                .all(promises)
+                .then((texts) => {
+                    const text = texts.join('');
+                    const blob = new Blob([text], { type: "application/javascript" });
+
+                    return URL.createObjectURL(blob);
+                });
+        }
+
+        const runExample = async () => {
+            var context = new AudioContext();
+            context.resume();
+
+            document.getElementById("start-button").disabled = true;
+            document.getElementById("start-button").remove();
+
+            URLFromFiles(['string-processor.js', 'ringbuf/index.js']).then((e) => {
+                context.audioWorklet.addModule(e).then(() => {
+                    const stringInfo = createStringDescriptions();
+
+                    const strings = stringInfo.map((info, i) => {
+                        const string = new AudioWorkletNode(
+                            context,
+                            'string-processor',
+                            {
+                                processorOptions: {
+                                    f0: info.f0,
+                                    visualize: window.visualizeStringState
+                                }
+                            });
+                        string.connect(context.destination);
+                        if (window.communicationChannel === "port") {
+                            string.port.onmessage = handlePortMessage.bind(this, i);
+                        }
+                        else if (window.communicationChannel === "sab") {
+                            let sharedBuffer = RingBuffer.getStorageForCapacity(31, Uint8Array);
+                            let ringBuffer = new RingBuffer(sharedBuffer, Uint8Array);
+                            let paramReader = new ParameterReader(ringBuffer);
+                            string.port.postMessage({
+                                type: "shared-buffer",
+                                buffer: sharedBuffer,
+                            });
+
+                            string.paramReader = paramReader;
+                        }
+                        createStringElement(info, i);
+                        return string;
+                    })
+
+                    document.getElementById("strum-button").disabled = false;
+                    document.getElementById("strum-button").style.display = "block";
+                    document.getElementById("pluck-button").disabled = false;
+                    document.getElementById("pluck-button").style.display = "block";
+                    document.getElementById("swipe-button").disabled = false;
+                    document.getElementById("swipe-button").style.display = "block";
+
+                    if (window.communicationChannel === "sab" && window.visualizeStringState) {
+                        requestAnimationFrame(animationFrame);
+                    }
+
+                    window["strings"] = strings;
+                });
+            });
+        };
+
+        const createStringElement = (info, i) => {
+            const stringVis = document.createElement("div");
+            const bigness = (1 - (info.f0 / 1000));
+            const widthness = (1 - (info.f0 / 3000));
+            stringVis.style.width = `${Math.max(Math.pow(widthness, 3) * 100, 1)}%`;
+            stringVis.style.height = `${Math.max(bigness * 6, 1.5)}px`;
+            stringVis.style.backgroundColor = "hotpink";
+            stringVis.style.margin = "8px";
+            stringVis.style.borderRadius = "10px";
+            stringVis.id = `string${i}`;
+            document.getElementById("vis").appendChild(stringVis);
+        }
+
+        const animationFrame = () => {
+            let o = { index: 0, value: 0 };
+
+            strings.forEach((s, i) => {
+                const element = document.getElementById(`string${i}`);
+                let amplitude = 0;
+                let vibration = 0;
+                while (s.paramReader.dequeue_change(o)) {
+                    switch (o.index) {
+                        case 0: amplitude = o.value; break;
+                        case 1: vibration = o.value; break;
+                    }
+                }
+                element.style.opacity = Math.max(0.20, amplitude * 10);
+                element.style.transform =
+                    `translateY(${vibration * 25 * (amplitude * 1.5)}px)`;
+            })
+            requestAnimationFrame(animationFrame);
+        }
+
+        const handlePortMessage = (i, message) => {
+            let element = document.getElementById(`string${i}`);
+            // Light up the string, and make it shake a bit based on values
+            // sent from the AudioWorklet processor.
+            element.style.opacity = Math.max(0.20, message.data.amplitude * 10);
+            element.style.transform =
+                `translateY(${message.data.vibration * 25 * (message.data.amplitude * 1.5)}px)`;
+        }
+
+        const strum = () => {
+            strings.forEach((s, i) => {
+                setTimeout(() => { s.port.postMessage({ type: "play" }) }, i * 50)
+            });
+        }
+
+        const pluck = () => {
+            strings[Math.floor(Math.random() * 10)].port.postMessage({ type: "play" });
+        }
+
+        const swipe = () => {
+            const stringsToSwipe = 5;
+            const startString = Math.floor(Math.random() * (window.numStrings - stringsToSwipe));
+            for (let i = 0; i < stringsToSwipe; i++) {
+                setTimeout(() => { strings[i + startString].port.postMessage({ type: "play" }) }, i * 50)
+            }
+        }
+
+        const changeStrings = (number) => {
+            reloadWith(number, window.visualizeStringState, window.communicationChannel);
+        }
+
+        const toggleStringVisualization = () => {
+            reloadWith(window.numStrings, !window.visualizeStringState, window.communicationChannel);
+        }
+
+        const changeChannel = (channel) => {
+            reloadWith(window.numStrings, window.visualizeStringState, channel);
+        }
+
+        const reloadWith = (strings, visualize, channel) => {
+            const newUrl = `${window.location.origin}${window.location.pathname}?strings=${strings}&visualize=${visualize}&channel=${channel}`;
+            window.location.href = newUrl;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const numStrings = urlParams.get('strings')
+            ? parseInt(urlParams.get('strings'))
+            : 25;
+
+        const visualizeStringState = urlParams.get('visualize') === "false"
+            ? false
+            : true;
+
+        const communicationChannel = urlParams.get('channel') === "sab"
+            ? "sab"
+            : "port";
+
+        const createStringDescriptions = () => {
+            // Yes, this really is as stupid as it looks. Just close your eyes and keep
+            // scrolling. It'll be over soon!
+            const stringInfo = [];
+            if (window.numStrings === 10) {
+                for (let i = 0; i < 10; i++) { stringInfo.push({ f0: 30 + (i * 30) }); }
+            }
+            if (window.numStrings >= 25) {
+                for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 30 + (i * 30) }); }
+                if (window.numStrings >= 50) {
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 40 + (i * 40) }); }
+                }
+                if (window.numStrings >= 100) {
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 50 + (i * 50) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 60 + (i * 60) }); }
+                }
+                if (window.numStrings >= 200) {
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 70 + (i * 70) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 80 + (i * 80) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 90 + (i * 90) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 100 + (i * 100) }); }
+                }
+                if (window.numStrings >= 250) {
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 110 + (i * 110) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 120 + (i * 120) }); }
+                }
+                if (window.numStrings >= 400) {
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 130 + (i * 130) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 140 + (i * 140) }); }
+
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 150 + (i * 150) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 160 + (i * 160) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 170 + (i * 170) }); }
+                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 180 + (i * 180) }); }
+                }
+            }
+            return stringInfo;
+        }
+
+        window.numStrings = numStrings;
+        window.visualizeStringState = visualizeStringState;
+        window.communicationChannel = communicationChannel;
+        document.getElementById(`${numStrings}-button`).style.outline = "solid 2px hotpink";
+        document.getElementById("vis-checkbox").checked = visualizeStringState;
+        switch (communicationChannel) {
+            case "sab": document.getElementById("choice-sab").checked = true; break;
+            case "port": document.getElementById("choice-port").checked = true; break;
+        }
+    </script>
+</body>
+
+</html>
