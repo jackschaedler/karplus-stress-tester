@@ -42,6 +42,10 @@
                 <p style="font-size: 0.75em; color: #999">Check this box to make the strings animate whenever they
                 are plucked. The animation is based on data which is produced in the audio-processing
                 simulation(s).</p>
+                <section id="webmidi-control">
+                    <h4>WebMidi:</h4>
+                    <p>This browser does not support WebMidi</p>
+                </section>
                 <h4>Communication channel:</h4>
                 <p style="font-size: 0.75em; color: #999">This data must be sent from the audio processing thread to the main/GUI thread
                 for visualization. There are two options for doing that: Using MessagePort (which creates garbage)
@@ -134,6 +138,42 @@
                 });
             });
         };
+
+        const onMidiInput = (e) => {
+            if (window.strings) {
+                pluck();
+            }
+        }
+
+        const onMidiInputSelectionChanged = (e) => {
+            if (window.currentMidiInput) {
+                WebMidi.getInputByName(window.currentMidiInput).removeListener('noteon', 'all', onMidiInput);
+            }
+            window.currentMidiInput = e.target.value;
+            WebMidi.getInputByName(window.currentMidiInput).addListener('noteon', 'all', onMidiInput);
+        };
+
+        const updateMidiInputOptions = () => {
+            const select = document.querySelector('#webmidi-control select');
+            select.innerHTML = WebMidi.inputs.map(input => `<option value="${input.name}">${input.name}</option>`).join();
+            select.onchange = onMidiInputSelectionChanged;
+            onMidiInputSelectionChanged({ target: select });
+        };
+
+        const initializeMidi = (err) => {
+            if (err) return;
+            const webMidiSection = document.querySelector('#webmidi-control');
+            webMidiSection.querySelector('p').innerText = "Select from one of the available MIDI input devices.";
+            webMidiSection.innerHTML += `
+                <div>
+                    <label for="webmidi-input">MessagePort</label>
+                    <select id="webmidi-input"></select>
+                    <button type="button" onclick="updateMidiInputOptions()">refresh</button>
+                </div>
+`;
+            updateMidiInputOptions()
+        };
+        WebMidi.enable(initializeMidi);
 
         const createStringElement = (info, i) => {
             const stringVis = document.createElement("div");
