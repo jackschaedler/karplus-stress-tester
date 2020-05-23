@@ -19,53 +19,75 @@ class StringProcessor extends AudioWorkletProcessor {
 
     constructor(options) {
       super();
+      console.log("version 1");
 
-      // String fundamental frequency
-      const f0 = options.processorOptions.f0;
-      this.sendBackData = options.processorOptions.visualize;
+      // In order to be able to measure the overhead of each AudioWorkletNode,
+      // this processor is written so that it can model an arbitrary number of
+      // strings.
+      this.filterZs = [];
+      this.delayLines = [];
+      this.delayLineWriteIndices = [];
+      this.delayLineReadIndices  = [];
+      this.excitationReadIndices = [];
+      this.analysisBuffers = [];
+      this.analysisWriteIndices = [];
 
-      // LP Filter
-      // Single sample delay line for LP filter.
-      this.filterZ = 0;
+      const f0s = options.processorOptions.f0s;
 
-      // Delay Line
-      let idealDelayLineLength = (sampleRate / f0);
-      // For this to really be correct, this processor should
-      // implement a fractional delay line length. Right now, the
-      // string cannot be precisely tuned because of this rounding/flooring.
-      this.delayLineLength = Math.floor(idealDelayLineLength);
-      this.delayLine = new Array(this.delayLineLength).fill(0);
-      this.delayWriteIndex = this.delayLineLength - 1;
-      this.delayReadIndex = 0;
-
-      // Noise Burst / Excitation
-      this.excitation = new Array(this.delayLineLength).fill(0);
-      this.excitationReadIndex = this.delayLineLength;
-      for (let i = 0; i < this.delayLineLength; i++) {
-          this.excitation[i] = (Math.random() - 0.5) * 1.5;
+      if (f0s.length > 100) {
+        throw new Error("Each AudioWorklet node can simulate max 100 strings.");
       }
 
-      // Analysis Buffer
-      // 60 times a second, we report back the average amplitude
-      // over the last "frame", as well as a value which allows us to
-      // do a fake string vibration animation.
-      this.analysisBufferLength = Math.floor(sampleRate / 60);
-      this.analysisBuffer = new Array(this.analysisBufferLength).fill(0);
-      this.analysisWriteIndex = 0;
+      f0s.forEach(f0 => { this.createString(f0); })
+
+      this.stringCount = f0s.length;
+      this.sendBackData = options.processorOptions.visualize;
+
+      // Noise Burst / Excitation
+      this.excitation = new Array(sampleRate).fill(0);
+      for (let i = 0; i < sampleRate; i++) {
+          this.excitation[i] = (Math.random() - 0.5) * 1.5;
+      }
 
       this.port.onmessage = this.handleMessage.bind(this);
     }
 
+    createString(f0) {
+      this.filterZs.push(0);
+      // Delay Line
+      const idealDelayLineLength = (sampleRate / f0);
+      // For this to really be correct, this processor should
+      // implement a fractional delay line length. Right now, the
+      // string cannot be precisely tuned because of this rounding/flooring.
+      const delayLineLength = Math.floor(idealDelayLineLength)
+      this.delayLines.push(new Array(delayLineLength).fill(0))
+      this.delayLineWriteIndices.push(delayLineLength - 1);
+      this.delayLineReadIndices.push(0);
+
+      // Noise Burst / Excitation
+      this.excitationReadIndices.push(delayLineLength);
+      
+      // Analysis Buffer
+      // 60 times a second, we report back the average amplitude
+      // over the last "frame", as well as a value which allows us to
+      // do a fake string vibration animation.
+      const analysisBufferLength = Math.floor(sampleRate / 60);
+      this.analysisBuffers.push(new Array(analysisBufferLength).fill(0));
+      // Vary the position of the write index, so analysis doesnt happen
+      // for every string at exactly the same time.
+      this.analysisWriteIndices.push(Math.floor(Math.random() * analysisBufferLength-1));
+    }
+
 
     handleMessage(event) {
-        if (event.data.type === "play") {
-          // Pluck the string!
-          this.excitationReadIndex = 0;
-        }
-        else if (event.data.type === "shared-buffer") {
-          this.parameterWriter = new ParameterWriter(new RingBuffer(event.data.buffer, Uint8Array));
-        }
+      if (event.data.type === "play") {
+        // Pluck the string
+        this.excitationReadIndices[event.data.stringIndex] = 0;
       }
+      else if (event.data.type === "shared-buffer") {
+        this.parameterWriter = new ParameterWriter(new RingBuffer(event.data.buffer, Uint8Array));
+      }
+    }
 
     process(inputs, outputs, parameters) {
       const output = outputs[0];
@@ -73,49 +95,59 @@ class StringProcessor extends AudioWorkletProcessor {
 
       if (output.length > 1) { throw new Error("This processor only expects mono"); }
 
-      for (let i = 0; i < outputChannel.length; ++i) {
-        const currentExcitation = this.excitationReadIndex < this.delayLineLength
-         ? this.excitation[this.excitationReadIndex]
-         : 0;
+      for (let s = 0; s < this.stringCount; ++s) {
+        for (let i = 0; i < outputChannel.length; ++i) {
+          const delayLineLength = this.delayLines[s].length;
+          const currentExcitation = this.excitationReadIndices[s] < delayLineLength
+           ? this.excitation[this.excitationReadIndices[s]]
+           : 0;
+  
+          const currentDelayLineOutput = this.delayLines[s][this.delayLineReadIndices[s]];
+          // This is a really simple low-pass filter which just (more or
+          // less) averages the last value with the current value, and ensures
+          // that the signal will decay.
+          this.filterZs[s] = (currentDelayLineOutput * 0.499) + (this.filterZs[s] * 0.499);
+  
+          const sum = currentExcitation + this.filterZs[s];
+          outputChannel[i] += sum;
+  
+          this.delayLines[s][this.delayLineWriteIndices[s]] = sum;
+          this.analysisBuffers[s][this.analysisWriteIndices[s]] = sum;
+  
+          this.excitationReadIndices[s]++;
+          this.delayLineReadIndices[s] = (this.delayLineReadIndices[s] + 1) % delayLineLength;
+          this.delayLineWriteIndices[s] = (this.delayLineWriteIndices[s] + 1) % delayLineLength;
 
-        let currentDelayLineOutput = this.delayLine[this.delayReadIndex];
-        // This is a really simple low-pass filter which just (more or
-        // less) averages the last value with the current value, and ensures
-        // that the signal will decay.
-        this.filterZ = (currentDelayLineOutput * 0.499) + (this.filterZ * 0.499);
-
-        let sum = currentExcitation + this.filterZ;
-        outputChannel[i] = sum;
-
-        this.delayLine[this.delayWriteIndex] = sum;
-        this.analysisBuffer[this.analysisWriteIndex] = sum;
-
-        this.excitationReadIndex++;
-        this.delayReadIndex = (this.delayReadIndex + 1) % this.delayLineLength;
-        this.delayWriteIndex = (this.delayWriteIndex + 1) % this.delayLineLength;
-        this.analysisWriteIndex = (this.analysisWriteIndex + 1) % this.analysisBufferLength;
-
-        if (this.analysisWriteIndex === 0 && this.sendBackData) {
-          let average = 0;
-          for (let i = 0; i < this.analysisBufferLength; i++) {
-            average += Math.abs(this.analysisBuffer[i]);
-          }
-
-          const amplitude = average / this.analysisBufferLength;
-          const vibration = (((this.excitationReadIndex / 3) % this.delayLineLength)
-            / this.delayLineLength);
-
-          if (this.parameterWriter) {
-            // Send back data using SharedArrayBuffer
-            this.parameterWriter.enqueue_change(0, amplitude);
-            this.parameterWriter.enqueue_change(1, vibration);
-          } else {
-            // Send back data using MessagePort
-            this.port.postMessage({message: 'analysis', amplitude, vibration});
+          const analysisBufferLength = this.analysisBuffers[s].length;
+          this.analysisWriteIndices[s] = (this.analysisWriteIndices[s] + 1) % analysisBufferLength;
+  
+          if (this.sendBackData && this.analysisWriteIndices[s] === 0) {
+            // This isn't the cleverest implementation of calculating an average
+            // amplitude. But, this is a stress test, and the general problem of
+            // needing to buffer up a bunch of audio and periodically send back
+            // some analysis you perform on it is a common thing.
+            let average = 0.0;
+            for (let i = 0; i < analysisBufferLength; i++) {
+              average += Math.abs(this.analysisBuffers[s][i]);
+            }
+  
+            const amplitude = average / analysisBufferLength;
+            const vibration = (((this.excitationReadIndices[s] / 3) % delayLineLength) / delayLineLength);
+  
+            if (this.parameterWriter) {
+              // Send back data using SharedArrayBuffer
+              this.parameterWriter.enqueue_change(s * 2, amplitude);
+              this.parameterWriter.enqueue_change(s * 2 + 1, vibration);
+            } else {
+              // Send back data using MessagePort
+              this.port.postMessage({message: 'analysis', 
+                                     amplitude, 
+                                     vibration, 
+                                     stringIndex: s});
+            }
           }
         }
       }
-
       return true;
     }
   }
