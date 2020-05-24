@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -15,7 +14,7 @@
     <script src="webmidi/webmidi.min.js"></script>
 </head>
 
-<body style="padding: 0px; margin: 0px">
+<body style="padding: 0px; margin: 0px; font-family: sans-serif">
     <div style="display: flex; flex-direction: row; width: 100%">
         <div style="flex-basis: 70%;">
             <div id="vis" style="width: 75%; margin-left: auto; margin-right: auto"></div>
@@ -23,12 +22,12 @@
         <div style="flex-basis: 30%; background-color: #eee; padding: 10px">
             <div>
                 <button id="start-button" onclick="runExample()" style="width: 100%; height: 100px">Start Audio</button>
-                <button id="pluck-button" onclick="pluck()" style="height: 50px; width:100%; display: none;">Pluck</button>
-                <button id="swipe-button" onclick="swipe()" style="height: 50px; width:100%; display: none;">Swipe</button>
-                <button id="strum-button" onclick="strum()" style="height: 50px; width:100%; display: none;">Strum all</button>
+                <button id="pluck-button" onclick="pluck()" style="height: 50px; width:100%; display: none; font-size: 1.8em;">pluck</button>
+                <button id="swipe-button" onclick="swipe()" style="height: 50px; width:100%; display: none; font-size: 1.8em;">swipe</button>
+                <button id="strum-button" onclick="strum()" style="height: 50px; width:100%; display: none; font-size: 1.8em;">strum all</button>
             </div>
             <div>
-                <h4>String count:</h4>
+                <h4 style="margin-bottom: 5px">Number of strings:</h4>
                 <button id="10-button" onclick="changeStrings(10)">10</button>
                 <button id="25-button" onclick="changeStrings(25)">25</button>
                 <button id="50-button" onclick="changeStrings(50)">50</button>
@@ -36,38 +35,59 @@
                 <button id="200-button" onclick="changeStrings(200)">200</button>
                 <button id="250-button" onclick="changeStrings(250)">250</button>
                 <button id="400-button" onclick="changeStrings(400)">400</button>
-                <p style="font-size: 0.75em; color: #999">Beware, high string counts might make your computer light on fire.
-                Even the the strings aren't playing, they are all simulating, all the time.</p>
-                <h4>Visualize string state: <input id="vis-checkbox" type="checkbox" onchange="toggleStringVisualization()"/></h4>
-                <p style="font-size: 0.75em; color: #999">Check this box to make the strings animate whenever they
-                are plucked. The animation is based on data which is produced in the audio-processing
-                simulation(s).</p>
+                <button id="600-button" onclick="changeStrings(600)">600</button>
+                <button id="1000-button" onclick="changeStrings(1000)">1000</button>
+                <p style="font-size: 0.7em; color: #999">Beware! High string counts might light your device on fire.
+                Even when the the strings aren't audible, they are still simulating.</p>
+                <section>
+                    <h4 style="margin-bottom: 5px">Strings per AudioWorklet:</h4>
+                    <p style="font-size: 0.7em; color: #999">This allows you to get a general feel for the overhead
+                    introduced by each audio worklet node.</a></p>
+                    <div>
+                        <input type="radio" id="choice-1" name="ratio" value="1" onchange="changeRatio(1)" />
+                        <label style="font-size: 0.8em;" for="choice-1">1 string : worklet</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="choice-100" name="ratio" value="100" onchange="changeRatio(100)" />
+                        <label style="font-size: 0.8em;" for="choice-100">100 strings : worklet (better)</label>
+                    </div>
+                </section>
+                <section>
+                    <h4 style="margin-bottom: 5px">Communication channel:</h4>
+                    <p style="font-size: 0.7em; color: #999">There are two options for sending data from the audio rendering thread to the GUI thread: 
+                    Using MessagePort (which creates garbage) or using SharedArrayBuffer (which does not create garbage). This demo is using Paul Adenot's lock-free data structures, which you
+                    can <a href="https://github.com/padenot/ringbuf.js">find on Github.</a></p>
+                    <div>
+                        <input type="radio" id="choice-port" name="channel" value="port" onchange="changeChannel('port')" />
+                        <label style="font-size: 0.8em;" for="choice-port">MessagePort</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="choice-sab" name="channel" value="sab" onchange="changeChannel('sab')" />
+                        <label style="font-size: 0.8em;" for="choice-sab">SharedArrayBuffer (better)</label>
+                    </div>
+                </section>
+                <p style="font-size: 0.7em; color: #999"> You need to be using an up-to-date version of Chrome, or
+                    Firefox Nightly with the "bypassCOOP_COEP.insecure.enabled"
+                    flag flipped on to use SharedArrayBuffer.
+                </p>
+                <section>
+                    <h4 style="margin-bottom: 5px">Animate string state: <input id="vis-checkbox" type="checkbox" onchange="toggleStringVisualization()"/></h4>
+                    <p style="font-size: 0.7em; color: #999">Check this box to make the strings animate whenever they
+                    are plucked. The animation is based on data which is produced in the audio-processing
+                    simulation(s). Therefore, turning this off will improve performance.</p>
+                </section>
                 <section id="webmidi-control">
                     <h4>WebMidi:</h4>
                     <p>This browser does not support WebMidi</p>
                 </section>
-                <h4>Communication channel:</h4>
-                <p style="font-size: 0.75em; color: #999">This data must be sent from the audio processing thread to the main/GUI thread
-                for visualization. There are two options for doing that: Using MessagePort (which creates garbage)
-                or using SharedArrayBuffer (which does not create garbage). This demo is using Paul Adenot's lock-free data structures, which you
-                can <a href="https://github.com/padenot/ringbuf.js">find on Github.</a></p>
-                <div>
-                    <input type="radio" id="choice-port" name="channel" value="port" onchange="changeChannel('port')" />
-                    <label for="choice-port">MessagePort</label>
-                </div>
-                <div>
-                    <input type="radio" id="choice-sab" name="channel" value="sab" onchange="changeChannel('sab')" />
-                    <label for="choice-sab">SharedArrayBuffer</label>
-                </div>
-                <p style="font-size: 0.75em; color: #999"> You need to be using an up-to-date version of Chrome, or
-                    Firefox Nightly with the "bypassCOOP_COEP.insecure.enabled"
-                    flag flipped on to use SharedArrayBuffer.
-                </p>
             </div>
         </div>
     </div>
 
     <script>
+        // This URLFromFiles function is used to concatenate
+        // files together at runtime. This removes the need to
+        // do some sort of bundling/packaging at build time.
         function URLFromFiles(files) {
             const promises = files
                 .map((file) => fetch(file)
@@ -92,36 +112,53 @@
 
             URLFromFiles(['string-processor.js', 'ringbuf/index.js']).then((e) => {
                 context.audioWorklet.addModule(e).then(() => {
-                    const stringInfo = createStringDescriptions();
+                    const audioNodes = [];
+                    window["audioNodes"] = audioNodes;
+                    const stringVisualizations = [];
+                    window["stringVisualizations"] = stringVisualizations;
+                    
+                    const nodeInfo = createAudioNodeDescriptions();
 
-                    const strings = stringInfo.map((info, i) => {
-                        const string = new AudioWorkletNode(
+                    nodeInfo.forEach((nodeInfo, j) => {
+                        const f0s = [];
+
+                        nodeInfo.strings.forEach((stringInfo, k) => {
+                            f0s.push(stringInfo.f0);
+                            const stringIndex = (j * window.ratio) + k;
+                            createStringElement(stringInfo, stringIndex);
+                        });
+
+                        const node = new AudioWorkletNode(
                             context,
                             'string-processor',
                             {
                                 processorOptions: {
-                                    f0: info.f0,
+                                    f0s,
                                     visualize: window.visualizeStringState
                                 }
-                            });
-                        string.connect(context.destination);
+                            }
+                        );
+
+                        node.connect(context.destination);
+
                         if (window.communicationChannel === "port") {
-                            string.port.onmessage = handlePortMessage.bind(this, i);
+                            node.port.onmessage = handleStringMessage.bind(this, j);
                         }
                         else if (window.communicationChannel === "sab") {
-                            let sharedBuffer = RingBuffer.getStorageForCapacity(31, Uint8Array);
+                            let sharedBuffer = RingBuffer.getStorageForCapacity(32 * 100, Uint8Array);
                             let ringBuffer = new RingBuffer(sharedBuffer, Uint8Array);
                             let paramReader = new ParameterReader(ringBuffer);
-                            string.port.postMessage({
+                            node.port.postMessage({
                                 type: "shared-buffer",
                                 buffer: sharedBuffer,
                             });
 
-                            string.paramReader = paramReader;
+                            node.paramReader = paramReader;
                         }
-                        createStringElement(info, i);
-                        return string;
-                    })
+
+                        audioNodes.push(node);
+                    });
+                    
 
                     document.getElementById("strum-button").disabled = false;
                     document.getElementById("strum-button").style.display = "block";
@@ -130,11 +167,9 @@
                     document.getElementById("swipe-button").disabled = false;
                     document.getElementById("swipe-button").style.display = "block";
 
-                    if (window.communicationChannel === "sab" && window.visualizeStringState) {
+                    if (window.visualizeStringState) {
                         requestAnimationFrame(animationFrame);
                     }
-
-                    window["strings"] = strings;
                 });
             });
         };
@@ -180,75 +215,95 @@
             const bigness = (1 - (info.f0 / 1000));
             const widthness = (1 - (info.f0 / 3000));
             stringVis.style.width = `${Math.max(Math.pow(widthness, 3) * 100, 1)}%`;
-            stringVis.style.height = `${Math.max(bigness * 6, 1.5)}px`;
+            stringVis.style.height = `${Math.max(bigness * 4, 1.5)}px`;
             stringVis.style.backgroundColor = "hotpink";
-            stringVis.style.margin = "8px";
+            stringVis.style.margin = "5px";
             stringVis.style.borderRadius = "10px";
+            stringVis.style.opacity = 0.2;
             stringVis.id = `string${i}`;
+            window.stringVisualizations[i] = stringVis;
             document.getElementById("vis").appendChild(stringVis);
         }
 
         const animationFrame = () => {
-            let o = { index: 0, value: 0 };
+            if (window.communicationChannel === "sab") {
+                // variable to hold result of dequeue_change
+                let o = { index: 0, value: 0 };
+                audioNodes.forEach((node, nodeIndex) => {
+                    while (node.paramReader.dequeue_change(o)) {
+                        const isAmplitude = o.index % 2 === 0;
+                        const stringIndex = Math.floor(o.index / 2);
+                        const globalStringIndex = window.ratio * nodeIndex + stringIndex;
 
-            strings.forEach((s, i) => {
-                const element = document.getElementById(`string${i}`);
-                let amplitude = 0;
-                let vibration = 0;
-                while (s.paramReader.dequeue_change(o)) {
-                    switch (o.index) {
-                        case 0: amplitude = o.value; break;
-                        case 1: vibration = o.value; break;
+                        if (isAmplitude) {
+                            stringAmplitudes[globalStringIndex] = o.value;
+                        } else {
+                            stringVibrations[globalStringIndex] = o.value;
+                        }
                     }
+                })
+            }
+
+            for (let i = 0; i < window.numStrings; i++) {
+                const amplitude = window.stringAmplitudes[i];
+                const vibration = window.stringVibrations[i];
+                if (amplitude > 0.001) {
+                    const element = window.stringVisualizations[i];
+                    element.style.opacity = Math.max(0.20, amplitude * 10);
+                    element.style.transform = `translateY(${vibration * 25 * (amplitude * 2)}px)`;
                 }
-                element.style.opacity = Math.max(0.20, amplitude * 10);
-                element.style.transform =
-                    `translateY(${vibration * 25 * (amplitude * 1.5)}px)`;
-            })
+            }
+
             requestAnimationFrame(animationFrame);
         }
 
-        const handlePortMessage = (i, message) => {
-            let element = document.getElementById(`string${i}`);
-            // Light up the string, and make it shake a bit based on values
-            // sent from the AudioWorklet processor.
-            element.style.opacity = Math.max(0.20, message.data.amplitude * 10);
-            element.style.transform =
-                `translateY(${message.data.vibration * 25 * (message.data.amplitude * 1.5)}px)`;
+        const handleStringMessage = (nodeIndex, message) => {
+            const stringIndex = (nodeIndex * window.ratio) + message.data.stringIndex;
+            window.stringAmplitudes[stringIndex] = message.data.amplitude;
+            window.stringVibrations[stringIndex] = message.data.vibration;
+        }
+        
+        const pluckString = (i) => {
+            const nodeIndex = stringIndexToNodeIndex(i);
+            audioNodes[nodeIndex].port.postMessage({type: "play", stringIndex: i % window.ratio});
         }
 
         const strum = () => {
-            strings.forEach((s, i) => {
-                setTimeout(() => { s.port.postMessage({ type: "play" }) }, i * 50)
-            });
+            for (let i = 0; i < window.numStrings; i++) {
+                setTimeout(() => { pluckString(i); }, i * 50)
+            }
         }
 
         const pluck = () => {
-            strings[Math.floor(Math.random() * 10)].port.postMessage({ type: "play" });
+            pluckString(Math.floor(Math.random() * 10));
         }
 
         const swipe = () => {
             const stringsToSwipe = 5;
             const startString = Math.floor(Math.random() * (window.numStrings - stringsToSwipe));
             for (let i = 0; i < stringsToSwipe; i++) {
-                setTimeout(() => { strings[i + startString].port.postMessage({ type: "play" }) }, i * 50)
+                setTimeout(() => { pluckString(i + startString); }, i * 50)
             }
         }
 
         const changeStrings = (number) => {
-            reloadWith(number, window.visualizeStringState, window.communicationChannel);
+            reloadWith(number, window.visualizeStringState, window.communicationChannel, window.ratio);
         }
 
         const toggleStringVisualization = () => {
-            reloadWith(window.numStrings, !window.visualizeStringState, window.communicationChannel);
+            reloadWith(window.numStrings, !window.visualizeStringState, window.communicationChannel, window.ratio);
         }
 
         const changeChannel = (channel) => {
-            reloadWith(window.numStrings, window.visualizeStringState, channel);
+            reloadWith(window.numStrings, window.visualizeStringState, channel, window.ratio);
         }
 
-        const reloadWith = (strings, visualize, channel) => {
-            const newUrl = `${window.location.origin}${window.location.pathname}?strings=${strings}&visualize=${visualize}&channel=${channel}`;
+        const changeRatio = (ratio) => {
+            reloadWith(window.numStrings, window.visualizeStringState, window.communicationChannel, ratio);
+        }
+
+        const reloadWith = (strings, visualize, channel, ratio) => {
+            const newUrl = `${window.location.origin}${window.location.pathname}?strings=${strings}&visualize=${visualize}&channel=${channel}&ratio=${ratio}`;
             window.location.href = newUrl;
         }
 
@@ -266,53 +321,52 @@
             ? "sab"
             : "port";
 
-        const createStringDescriptions = () => {
-            // Yes, this really is as stupid as it looks. Just close your eyes and keep
-            // scrolling. It'll be over soon!
-            const stringInfo = [];
-            if (window.numStrings === 10) {
-                for (let i = 0; i < 10; i++) { stringInfo.push({ f0: 30 + (i * 30) }); }
-            }
-            if (window.numStrings >= 25) {
-                for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 30 + (i * 30) }); }
-                if (window.numStrings >= 50) {
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 40 + (i * 40) }); }
-                }
-                if (window.numStrings >= 100) {
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 50 + (i * 50) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 60 + (i * 60) }); }
-                }
-                if (window.numStrings >= 200) {
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 70 + (i * 70) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 80 + (i * 80) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 90 + (i * 90) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 100 + (i * 100) }); }
-                }
-                if (window.numStrings >= 250) {
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 110 + (i * 110) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 120 + (i * 120) }); }
-                }
-                if (window.numStrings >= 400) {
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 130 + (i * 130) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 140 + (i * 140) }); }
+        const ratio = urlParams.get('ratio')
+            ? parseInt(urlParams.get('ratio'))
+            : 100;
 
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 150 + (i * 150) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 160 + (i * 160) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 170 + (i * 170) }); }
-                    for (let i = 0; i < 25; i++) { stringInfo.push({ f0: 180 + (i * 180) }); }
-                }
+        const stringIndexToNodeIndex = (i) => {
+            return Math.floor(i / window.ratio);
+        }
+        
+        const infoForStringIndex = (i) => {
+            const stringsInEachSet = 25;
+            const stringSet = Math.floor(i / stringsInEachSet);
+            const mod = i % stringsInEachSet;
+            const setF0 = 30 + (stringSet * 10);
+            return { f0: setF0 + (setF0 * mod) };
+        }
+    
+        const createAudioNodeDescriptions = () => {
+            const nodeDescriptions = [];
+            const nodeCount = Math.ceil(window.numStrings / window.ratio);
+            for (let i = 0; i < nodeCount; i++) {
+                nodeDescriptions.push({strings: []});
             }
-            return stringInfo;
+
+            for (let i = 0; i < window.numStrings; i++) {
+                const nodeIndex = stringIndexToNodeIndex(i);
+                nodeDescriptions[nodeIndex].strings.push(infoForStringIndex(i));
+            }
+
+            return nodeDescriptions;
         }
 
         window.numStrings = numStrings;
+        window.stringAmplitudes = new Array(numStrings).fill(0);
+        window.stringVibrations = new Array(numStrings).fill(0);
         window.visualizeStringState = visualizeStringState;
         window.communicationChannel = communicationChannel;
+        window.ratio = ratio;
         document.getElementById(`${numStrings}-button`).style.outline = "solid 2px hotpink";
         document.getElementById("vis-checkbox").checked = visualizeStringState;
         switch (communicationChannel) {
             case "sab": document.getElementById("choice-sab").checked = true; break;
             case "port": document.getElementById("choice-port").checked = true; break;
+        }
+        switch (ratio) {
+            case 1: document.getElementById("choice-1").checked = true; break;
+            case 100: document.getElementById("choice-100").checked = true; break;
         }
     </script>
 </body>
