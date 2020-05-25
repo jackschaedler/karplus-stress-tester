@@ -19,7 +19,7 @@ class StringProcessor extends AudioWorkletProcessor {
 
     constructor(options) {
       super();
-      console.log("version 2");
+      console.log("version 3");
 
       // In order to be able to measure the overhead of each AudioWorkletNode,
       // this processor is written so that it can model an arbitrary number of
@@ -73,9 +73,7 @@ class StringProcessor extends AudioWorkletProcessor {
       // do a fake string vibration animation.
       const analysisBufferLength = Math.floor(sampleRate / 60);
       this.analysisBuffers.push(new Array(analysisBufferLength).fill(0));
-      // Vary the position of the write index, so analysis doesnt happen
-      // for every string at exactly the same time.
-      this.analysisWriteIndices.push(Math.floor(Math.random() * analysisBufferLength-1));
+      this.analysisWriteIndices.push(0);
     }
 
 
