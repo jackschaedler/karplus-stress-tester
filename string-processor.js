@@ -19,7 +19,7 @@ class StringProcessor extends AudioWorkletProcessor {
 
     constructor(options) {
       super();
-      console.log("version 3");
+      console.log("version 4");
 
       // In order to be able to measure the overhead of each AudioWorkletNode,
       // this processor is written so that it can model an arbitrary number of
@@ -29,8 +29,10 @@ class StringProcessor extends AudioWorkletProcessor {
       this.delayLineWriteIndices = [];
       this.delayLineReadIndices  = [];
       this.excitationReadIndices = [];
-      this.analysisBuffers = [];
-      this.analysisWriteIndices = [];
+      this.analysisCounter = 0;
+      this.analysisCounterTrigger = Math.floor(sampleRate / 60);
+      this.envelopeFollowerCoeff = Math.exp(Math.log(0.01)/(10 * sampleRate * 0.001)); // 10ms
+      this.envelopes = [];
 
       const f0s = options.processorOptions.f0s;
 
@@ -66,14 +68,8 @@ class StringProcessor extends AudioWorkletProcessor {
 
       // Noise Burst / Excitation
       this.excitationReadIndices.push(delayLineLength);
-      
-      // Analysis Buffer
-      // 60 times a second, we report back the average amplitude
-      // over the last "frame", as well as a value which allows us to
-      // do a fake string vibration animation.
-      const analysisBufferLength = Math.floor(sampleRate / 60);
-      this.analysisBuffers.push(new Array(analysisBufferLength).fill(0));
-      this.analysisWriteIndices.push(0);
+      // Envelope follower value
+      this.envelopes.push(0);
     }
 
 
@@ -118,44 +114,41 @@ class StringProcessor extends AudioWorkletProcessor {
   
           const sum = currentExcitation + this.filterZs[s];
           outputChannel[i] += sum;
+
+          const absSum = Math.abs(sum);
+          this.envelopes[s] = this.envelopeFollowerCoeff * (this.envelopes[s] - absSum) + absSum;
   
           this.delayLines[s][this.delayLineWriteIndices[s]] = sum;
-          this.analysisBuffers[s][this.analysisWriteIndices[s]] = sum;
-  
           this.excitationReadIndices[s]++;
           this.delayLineReadIndices[s] = (this.delayLineReadIndices[s] + 1) % delayLineLength;
           this.delayLineWriteIndices[s] = (this.delayLineWriteIndices[s] + 1) % delayLineLength;
+        }
+      }
 
-          const analysisBufferLength = this.analysisBuffers[s].length;
-          this.analysisWriteIndices[s] = (this.analysisWriteIndices[s] + 1) % analysisBufferLength;
-  
-          if (this.sendBackData && this.analysisWriteIndices[s] === 0) {
-            // This isn't the cleverest implementation of calculating an average
-            // amplitude. But, this is a stress test, and the general problem of
-            // needing to buffer up a bunch of audio and periodically send back
-            // some analysis you perform on it is a common thing.
-            let average = 0.0;
-            for (let i = 0; i < analysisBufferLength; i++) {
-              average += Math.abs(this.analysisBuffers[s][i]);
-            }
-  
-            const amplitude = average / analysisBufferLength;
-            const vibration = (((this.excitationReadIndices[s] / 3) % delayLineLength) / delayLineLength);
-  
-            if (this.parameterWriter) {
-              // Send back data using SharedArrayBuffer
-              this.parameterWriter.enqueue_change(s * 2, amplitude);
-              this.parameterWriter.enqueue_change(s * 2 + 1, vibration);
-            } else {
-              // Send back data using MessagePort
-              this.port.postMessage({message: 'analysis', 
-                                     amplitude, 
-                                     vibration, 
-                                     stringIndex: s});
-            }
+      this.analysisCounter += outputChannel.length;
+
+      if (this.sendBackData && this.analysisCounter >= this.analysisCounterTrigger) {
+        this.analysisCounter = this.analysisCounter % this.analysisCounterTrigger;
+
+        for (let s = 0; s < this.envelopes.length; s++) {
+          const delayLineLength = this.delayLines[s].length;
+          const amplitude = this.envelopes[s];
+          const vibration = (((this.excitationReadIndices[s] / 3) % delayLineLength) / delayLineLength);
+
+          if (this.parameterWriter) {
+            // Send back data using SharedArrayBuffer
+            this.parameterWriter.enqueue_change(s * 2, amplitude);
+            this.parameterWriter.enqueue_change(s * 2 + 1, vibration);
+          } else {
+            // Send back data using MessagePort
+            this.port.postMessage({message: 'analysis',
+                                   amplitude,
+                                   vibration,
+                                   stringIndex: s});
           }
         }
       }
+
       return true;
     }
   }
