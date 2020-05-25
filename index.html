@@ -60,10 +60,10 @@
                     </div>
                 </section>
                 <section>
-                    <h4 style="margin-bottom: 5px">Audio->GUI channel</h4>
-                    <p style="font-size: 0.7em; color: #999">There are two options for sending data from the audio rendering thread to the GUI/main thread: 
+                    <h4 style="margin-bottom: 5px">Communication channel</h4>
+                    <p style="font-size: 0.7em; color: #999">There are two options for sending data between the audio rendering thread and the GUI (main) thread: 
                     MessagePort (which creates garbage) or using SharedArrayBuffers (which do not necessarily create garbage). When SharedArrayBuffer is selected, this page is 
-                    using <a href="https://github.com/padenot/ringbuf.js">Paul Adenot's lock-free data structures library.</a></p>
+                    using <a href="https://github.com/padenot/ringbuf.js">Paul Adenot's lock-free queue library.</a></p>
                     <div>
                         <input type="radio" id="choice-port" name="channel" value="port" onchange="changeChannel('port')" />
                         <label style="font-size: 0.8em;" for="choice-port">MessagePort</label>
@@ -153,15 +153,29 @@
                             node.port.onmessage = handleStringMessage.bind(this, j);
                         }
                         else if (window.communicationChannel === "sab") {
-                            let sharedBuffer = RingBuffer.getStorageForCapacity(32 * 100, Uint8Array);
-                            let ringBuffer = new RingBuffer(sharedBuffer, Uint8Array);
-                            let paramReader = new ParameterReader(ringBuffer);
-                            node.port.postMessage({
-                                type: "shared-buffer",
-                                buffer: sharedBuffer,
-                            });
+                            {
+                                let sharedBuffer = RingBuffer.getStorageForCapacity(32 * 100, Uint8Array);
+                                let ringBuffer = new RingBuffer(sharedBuffer, Uint8Array);
+                                let paramReader = new ParameterReader(ringBuffer);
+                                node.port.postMessage({
+                                    type: "shared-buffer",
+                                    buffer: sharedBuffer,
+                                });
 
-                            node.paramReader = paramReader;
+                                node.paramReader = paramReader;
+                            }
+
+                            {
+                                let sharedBuffer = RingBuffer.getStorageForCapacity(31, Uint8Array);
+                                let ringBuffer = new RingBuffer(sharedBuffer, Uint8Array);
+                                let paramWriter = new ParameterWriter(ringBuffer);
+                                node.port.postMessage({
+                                    type: "shared-buffer-plucks",
+                                    buffer: sharedBuffer,
+                                })
+
+                                node.paramWriter = paramWriter;
+                            }
                         }
 
                         audioNodes.push(node);
@@ -291,7 +305,11 @@
         
         const pluckString = (i) => {
             const nodeIndex = stringIndexToNodeIndex(i);
-            audioNodes[nodeIndex].port.postMessage({type: "play", stringIndex: i % window.ratio});
+            if (window.communicationChannel === "port") {
+                audioNodes[nodeIndex].port.postMessage({type: "play", stringIndex: i % window.ratio});
+            } else if (window.communicationChannel === "sab") {
+                audioNodes[nodeIndex].paramWriter.enqueue_change(i % window.ratio, true);
+            }
         }
 
         const strum = () => {
