@@ -19,7 +19,7 @@ class StringProcessor extends AudioWorkletProcessor {
 
     constructor(options) {
       super();
-      console.log("version 1");
+      console.log("version 2");
 
       // In order to be able to measure the overhead of each AudioWorkletNode,
       // this processor is written so that it can model an arbitrary number of
@@ -87,11 +87,21 @@ class StringProcessor extends AudioWorkletProcessor {
       else if (event.data.type === "shared-buffer") {
         this.parameterWriter = new ParameterWriter(new RingBuffer(event.data.buffer, Uint8Array));
       }
+      else if (event.data.type === "shared-buffer-plucks") {
+        this.parameterReader = new ParameterReader(new RingBuffer(event.data.buffer, Uint8Array));
+      }
     }
 
     process(inputs, outputs, parameters) {
       const output = outputs[0];
       const outputChannel = output[0];
+
+      if (this.parameterReader) {
+        let o = { index: 0, value: 0 };
+        while (this.parameterReader.dequeue_change(o)) {
+          this.excitationReadIndices[o.index] = 0;
+        }
+      }
 
       if (output.length > 1) { throw new Error("This processor only expects mono"); }
 
