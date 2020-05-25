@@ -15,7 +15,7 @@
 </head>
 
 <body style="padding: 0px; margin: 0px; font-family: sans-serif">
-    <div style="position: fixed; bottom: 0; left: 0; background-color: #eee; padding: 5px">
+    <div style="position: fixed; top: 0; left: 0; background-color: #eee; padding: 5px">
         <a href="https://github.com/jackschaedler/karplus-stress-tester">Learn more</a>
     </div>
     <div style="display: flex; flex-direction: row; width: 100%">
@@ -86,7 +86,7 @@
                 </section>
                 <section id="webmidi-control">
                     <h4>WebMidi</h4>
-                    <p>This browser does not support WebMidi</p>
+                    <p style="font-size: 0.7em; color: #999">This browser does not support WebMidi</p>
                 </section>
             </div>
         </div>
@@ -223,7 +223,7 @@
             webMidiSection.querySelector('p').innerText = "Select from one of the available MIDI input devices.";
             webMidiSection.innerHTML += `
                 <div>
-                    <label for="webmidi-input">MessagePort</label>
+                    <label style="font-size: 0.8em;" for="webmidi-input">Device</label>
                     <select id="webmidi-input"></select>
                     <button type="button" onclick="updateMidiInputOptions()">refresh</button>
                 </div>
