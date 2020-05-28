@@ -1,6 +1,6 @@
 /*
 This processor implements a simple version of the
-Karplus-Strong string synthesis algorithm:
+Karplus-Strong string synthesis algorithm in JavaScript:
 
      /----------(+)--------------------------------------> Output
      |           |                            |
@@ -19,15 +19,14 @@ class StringProcessor extends AudioWorkletProcessor {
 
     constructor(options) {
       super();
-      console.log("version 4");
+      console.log("version 6 (JS)");
 
       // In order to be able to measure the overhead of each AudioWorkletNode,
       // this processor is written so that it can model an arbitrary number of
       // strings.
       this.filterZs = [];
       this.delayLines = [];
-      this.delayLineWriteIndices = [];
-      this.delayLineReadIndices  = [];
+      this.delayLineIndices  = [];
       this.excitationReadIndices = [];
       this.analysisCounter = 0;
       this.analysisCounterTrigger = Math.floor(sampleRate / 60);
@@ -63,8 +62,7 @@ class StringProcessor extends AudioWorkletProcessor {
       // string cannot be precisely tuned because of this rounding/flooring.
       const delayLineLength = Math.floor(idealDelayLineLength)
       this.delayLines.push(new Array(delayLineLength).fill(0))
-      this.delayLineWriteIndices.push(delayLineLength - 1);
-      this.delayLineReadIndices.push(0);
+      this.delayLineIndices.push(0);
 
       // Noise Burst / Excitation
       this.excitationReadIndices.push(delayLineLength);
@@ -106,7 +104,7 @@ class StringProcessor extends AudioWorkletProcessor {
            ? this.excitation[this.excitationReadIndices[s]]
            : 0;
   
-          const currentDelayLineOutput = this.delayLines[s][this.delayLineReadIndices[s]];
+          const currentDelayLineOutput = this.delayLines[s][this.delayLineIndices[s]];
           // This is a really simple low-pass filter which just (more or
           // less) averages the last value with the current value, and ensures
           // that the signal will decay.
@@ -118,10 +116,9 @@ class StringProcessor extends AudioWorkletProcessor {
           const absSum = Math.abs(sum);
           this.envelopes[s] = this.envelopeFollowerCoeff * (this.envelopes[s] - absSum) + absSum;
   
-          this.delayLines[s][this.delayLineWriteIndices[s]] = sum;
+          this.delayLines[s][this.delayLineIndices[s]] = sum;
           this.excitationReadIndices[s]++;
-          this.delayLineReadIndices[s] = (this.delayLineReadIndices[s] + 1) % delayLineLength;
-          this.delayLineWriteIndices[s] = (this.delayLineWriteIndices[s] + 1) % delayLineLength;
+          this.delayLineIndices[s] = (this.delayLineIndices[s] + 1) % delayLineLength;
         }
       }
 
