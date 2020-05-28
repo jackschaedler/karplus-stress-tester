@@ -76,6 +76,10 @@
                         <input type="radio" id="choice-sab" name="channel" value="sab" onchange="changeChannel('sab')" />
                         <label style="font-size: 0.8em;" for="choice-sab">SharedArrayBuffer (better)</label>
                     </div>
+                    <p style="font-size: 0.7em; color: #999">⚠️ You need to be using an up-to-date version of Chrome, or
+                        Firefox Nightly with the "bypassCOOP_COEP.insecure.enabled"
+                        flag flipped on to use SharedArrayBuffers.
+                    </p>
                 </section>
                 <section>
                     <h4 style="margin-bottom: 5px">Audio processing language</h4>
@@ -89,10 +93,6 @@
                         <label style="font-size: 0.8em;" for="choice-wasm">WebAssembly (faster)</label>
                     </div>
                 </section>
-                <p style="font-size: 0.7em; color: #999">⚠️ You need to be using an up-to-date version of Chrome, or
-                    Firefox Nightly with the "bypassCOOP_COEP.insecure.enabled"
-                    flag flipped on to use SharedArrayBuffers.
-                </p>
                 <section>
                     <h4 style="margin-bottom: 5px">Visualize string state <input id="vis-checkbox" type="checkbox" onchange="toggleStringVisualization()"/></h4>
                     <p style="font-size: 0.7em; color: #999">Check this box to make the strings animate whenever they
