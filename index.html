@@ -45,6 +45,9 @@
                 <button id="400-button" onclick="changeStrings(400)">400</button>
                 <button id="600-button" onclick="changeStrings(600)">600</button>
                 <button id="1000-button" onclick="changeStrings(1000)">1000</button>
+                <button id="1500-button" onclick="changeStrings(1500)">1500</button>
+                <button id="2000-button" onclick="changeStrings(2000)">2000</button>
+                <button id="3000-button" onclick="changeStrings(3000)">3000</button>
                 <p style="font-size: 0.7em; color: #999">Beware! Large numbers of strings might light your device on fire.
                 Even when the the strings aren't audible, they are all simulating.</p>
                 <section>
@@ -72,6 +75,18 @@
                     <div>
                         <input type="radio" id="choice-sab" name="channel" value="sab" onchange="changeChannel('sab')" />
                         <label style="font-size: 0.8em;" for="choice-sab">SharedArrayBuffer (better)</label>
+                    </div>
+                </section>
+                <section>
+                    <h4 style="margin-bottom: 5px">Audio processing language</h4>
+                    <p style="font-size: 0.7em; color: #999">JavaScript or WASM?</a></p>
+                    <div>
+                        <input type="radio" id="choice-js" name="lang" value="js" onchange="changeLang('port')" />
+                        <label style="font-size: 0.8em;" for="choice-js">JavaScript</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="choice-wasm" name="lang" value="wasm" onchange="changeLang('wasm')" />
+                        <label style="font-size: 0.8em;" for="choice-wasm">WebAssembly (faster)</label>
                     </div>
                 </section>
                 <p style="font-size: 0.7em; color: #999">⚠️ You need to be using an up-to-date version of Chrome, or
@@ -119,7 +134,14 @@
             document.getElementById("start-button").disabled = true;
             document.getElementById("start-button").remove();
 
-            URLFromFiles(['string-processor.js', 'ringbuf/index.js']).then((e) => {
+            const processorPath = window.lang === "js" ? "string-processor.js" : "string-processor-wasm.js";
+            const processorName = window.lang === "js" ? "string-processor" : "string-processor-wasm";
+
+            const files = window.lang === "js"
+                ? [processorPath, 'ringbuf/index.js']
+                : [processorPath, 'ringbuf/index.js']
+
+            URLFromFiles(files).then((e) => {
                 context.audioWorklet.addModule(e).then(() => {
                     const audioNodes = [];
                     window["audioNodes"] = audioNodes;
@@ -139,7 +161,7 @@
 
                         const node = new AudioWorkletNode(
                             context,
-                            'string-processor',
+                            processorName,
                             {
                                 processorOptions: {
                                     f0s,
@@ -182,6 +204,18 @@
                         audioNodes.push(node);
                     });
                     
+                    if (window.lang === "wasm") {
+                        fetch("karplus.wasm")
+                            .then(res => res.arrayBuffer())
+                            .then(buf => {
+                                window.audioNodes.forEach(node => {
+                                    node.port.postMessage({
+                                        type: "wasm",
+                                        buffer: buf,
+                                    })
+                                })
+                            })
+                    }
 
                     document.getElementById("strum-button").disabled = false;
                     document.getElementById("strum-button").style.display = "block";
@@ -332,23 +366,27 @@
         }
 
         const changeStrings = (number) => {
-            reloadWith(number, window.visualizeStringState, window.communicationChannel, window.ratio);
+            reloadWith(number, window.visualizeStringState, window.communicationChannel, window.ratio, window.lang);
         }
 
         const toggleStringVisualization = () => {
-            reloadWith(window.numStrings, !window.visualizeStringState, window.communicationChannel, window.ratio);
+            reloadWith(window.numStrings, !window.visualizeStringState, window.communicationChannel, window.ratio, window.lang);
         }
 
         const changeChannel = (channel) => {
-            reloadWith(window.numStrings, window.visualizeStringState, channel, window.ratio);
+            reloadWith(window.numStrings, window.visualizeStringState, channel, window.ratio, window.lang);
         }
 
         const changeRatio = (ratio) => {
-            reloadWith(window.numStrings, window.visualizeStringState, window.communicationChannel, ratio);
+            reloadWith(window.numStrings, window.visualizeStringState, window.communicationChannel, ratio, window.lang);
         }
 
-        const reloadWith = (strings, visualize, channel, ratio) => {
-            const newUrl = `${window.location.origin}${window.location.pathname}?strings=${strings}&visualize=${visualize}&channel=${channel}&ratio=${ratio}`;
+        const changeLang = (lang) => {
+            reloadWith(window.numStrings, window.visualizeStringState, window.communicationChannel, window.ratio, lang);
+        }
+
+        const reloadWith = (strings, visualize, channel, ratio, lang) => {
+            const newUrl = `${window.location.origin}${window.location.pathname}?strings=${strings}&visualize=${visualize}&channel=${channel}&ratio=${ratio}&lang=${lang}`;
             window.location.href = newUrl;
         }
 
@@ -369,6 +407,10 @@
         const ratio = urlParams.get('ratio')
             ? parseInt(urlParams.get('ratio'))
             : 100;
+        
+        const lang = urlParams.get('lang') === "wasm"
+            ? "wasm"
+            : "js"
 
         const stringIndexToNodeIndex = (i) => {
             return Math.floor(i / window.ratio);
@@ -413,12 +455,17 @@
         window.stringVibrations = new Array(numStrings).fill(0);
         window.visualizeStringState = visualizeStringState;
         window.communicationChannel = communicationChannel;
+        window.lang = lang;
         window.ratio = ratio;
         document.getElementById(`${numStrings}-button`).style.outline = "solid 2px hotpink";
         document.getElementById("vis-checkbox").checked = visualizeStringState;
         switch (communicationChannel) {
             case "sab": document.getElementById("choice-sab").checked = true; break;
             case "port": document.getElementById("choice-port").checked = true; break;
+        }
+        switch (lang) {
+            case "wasm": document.getElementById("choice-wasm").checked = true; break;
+            case "js": document.getElementById("choice-js").checked = true; break;
         }
         switch (ratio) {
             case 1: document.getElementById("choice-1").checked = true; break;
