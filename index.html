@@ -232,13 +232,37 @@
                     if (window.visualize) {
                         requestAnimationFrame(animationFrame);
                     }
+
+                    setupMidiToStringMap();
                 });
             });
         };
 
+        const setupMidiToStringMap = () => {
+            window.midiToString = {};
+            for (n = 0; n <= 127; n++) {
+                const noteFrequency = Math.pow(2, (n - 69) / 12) * 440;
+                let nearestIndex = 0;
+                let nearestDelta = Number.MAX_VALUE;
+                for (i = 0; i < window.stringVisualizations.length; i++) {
+                    const delta = Math.abs(window.stringVisualizations[i].f0 - noteFrequency);
+                    if (delta < nearestDelta) {
+                        nearestDelta = delta;
+                        nearestIndex = i;
+                    }
+                }
+                window.midiToString[n] = nearestIndex;
+            }
+        }
+
         const onMidiInput = (e) => {
-            if (window.strings) {
-                pluck();
+            if (e.type === "noteon") {
+                if (window.audioNodes) {
+                    const stringIndex = window.midiToString[e.note.number];
+                    if (stringIndex && stringIndex >= 0) {
+                        pluckString(stringIndex);
+                    }
+                }
             }
         }
 
@@ -260,7 +284,7 @@
         const initializeMidi = (err) => {
             if (err) return;
             const webMidiSection = document.querySelector('#webmidi-control');
-            webMidiSection.querySelector('p').innerText = "Select from one of the available MIDI input devices.";
+            webMidiSection.querySelector('p').innerText = "Select from one of the available MIDI input devices. Whenever you play a note, the string with the nearest frequency will be plucked.";
             webMidiSection.innerHTML += `
                 <div>
                     <label style="font-size: 0.8em;" for="webmidi-input">Device</label>
@@ -301,6 +325,7 @@
             })
 
             window.stringVisualizations[i] = stringVis;
+            window.stringVisualizations[i].f0 = info.f0;
             document.getElementById("vis").appendChild(stringVis);
             document.getElementById("vis-hitareas").appendChild(stringHitarea);
         }
