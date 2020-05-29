@@ -27,10 +27,10 @@ class StringProcessorWASM extends AudioWorkletProcessor {
           this.wasm.exports.pluck_string(event.data.stringIndex);
         }
       }
-      else if (event.data.type === "shared-buffer") {
+      else if (event.data.type === "audio-to-gui-buffer") {
         this.parameterWriter = new ParameterWriter(new RingBuffer(event.data.buffer, Uint8Array));
       }
-      else if (event.data.type === "shared-buffer-plucks") {
+      else if (event.data.type === "gui-to-audio-buffer") {
         this.parameterReader = new ParameterReader(new RingBuffer(event.data.buffer, Uint8Array));
       }
       else if (event.data.type === "wasm") {
@@ -53,8 +53,6 @@ class StringProcessorWASM extends AudioWorkletProcessor {
           this.wasm.exports.memory.buffer, 
           this._outPtr, 
           this._buffer_size);
-
-        console.log(this.wasm.exports.check())
       }
     }
 
