@@ -69,7 +69,7 @@
                 <section>
                     <h4 style="margin-bottom: 5px; color: #888">Communication channel</h4>
                     <p style="font-size: 0.7em; color: #999">There are two options for sending data between the audio rendering thread and the GUI (main) thread: 
-                    MessagePort (which creates garbage) or using SharedArrayBuffers (which do not necessarily create garbage). When SharedArrayBuffer is selected, this page is 
+                    MessagePort (which creates garbage via memory allocations) or using SharedArrayBuffers (which do not necessarily create garbage). When SharedArrayBuffer is selected, this page is 
                     using <a href="https://github.com/padenot/ringbuf.js">Paul Adenot's lock-free queue library.</a></p>
                     <div>
                         <input type="radio" id="choice-port" name="channel" value="port" onchange="changeChannel('port')" />
