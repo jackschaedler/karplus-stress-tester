@@ -76,10 +76,10 @@ class StringProcessor extends AudioWorkletProcessor {
         // Pluck the string
         this.excitationReadIndices[event.data.stringIndex] = 0;
       }
-      else if (event.data.type === "shared-buffer") {
+      else if (event.data.type === "audio-to-gui-buffer") {
         this.parameterWriter = new ParameterWriter(new RingBuffer(event.data.buffer, Uint8Array));
       }
-      else if (event.data.type === "shared-buffer-plucks") {
+      else if (event.data.type === "gui-to-audio-buffer") {
         this.parameterReader = new ParameterReader(new RingBuffer(event.data.buffer, Uint8Array));
       }
     }

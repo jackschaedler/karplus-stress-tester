@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Karplus-Strong stress tester</title>
+    <title>Karplus-Strong Stress Tester</title>
     <script>
         // Import @padenot's ringbuf.js library for passing
         // data between AudioWorklet and the main thread
@@ -19,41 +19,44 @@
         <a href="https://github.com/jackschaedler/karplus-stress-tester">Learn more</a>
     </div>
     <div style="display: flex; flex-direction: row; width: 100%">
-        <div style="flex-basis: 70%;">
+        <div style="flex-basis: 60%;">
             <div style="width: 75%; margin-left: auto; margin-right: auto; margin-top: 2em; position: relative">
                 <div id="no-worklet-message" style="display: none; font-size: 2em;">Your browser doesn't seem to support Audio Worklet.</div>
                 <div id="vis" style="position: absolute; top: 0; left: 0; right: 0"></div>
                 <div id="vis-hitareas" style="position: absolute; top: 0; left: 0; right: 0"></div>
             </div>
         </div>
-        <div style="flex-basis: 30%; background-color: #eee; padding: 15px;">
+        <div style="flex-basis: 40%; background-color: #eee; padding: 15px;">
             <div>
-                <button id="start-button" onclick="runExample()" style="width: 100%; height: 100px; font-size: 1.5em;">Start audio 🔊</button>
+                <button id="start-button" onclick="runExample()" style="width: 100%; height: 100px; font-size: 1.5em;">start audio 🔊</button>
                 <button id="pluck-button" onclick="pluck()" style="height: 50px; width:100%; display: none; font-size: 1.5em;">pluck</button>
                 <button id="swipe-button" onclick="swipe()" style="height: 50px; width:100%; display: none; font-size: 1.5em;">swipe</button>
                 <button id="strum-button" onclick="strum()" style="height: 50px; width:100%; display: none; font-size: 1.5em;">strum all</button>
             </div>
             <div>
-                <h2>Parameters</h2>
-                <h4 style="margin-bottom: 5px">Number of strings</h4>
-                <button id="10-button" onclick="changeStrings(10)">10</button>
-                <button id="25-button" onclick="changeStrings(25)">25</button>
-                <button id="50-button" onclick="changeStrings(50)">50</button>
-                <button id="100-button" onclick="changeStrings(100)">100</button>
-                <button id="200-button" onclick="changeStrings(200)">200</button>
-                <button id="250-button" onclick="changeStrings(250)">250</button>
-                <button id="400-button" onclick="changeStrings(400)">400</button>
-                <button id="600-button" onclick="changeStrings(600)">600</button>
-                <button id="1000-button" onclick="changeStrings(1000)">1000</button>
-                <button id="1500-button" onclick="changeStrings(1500)">1500</button>
-                <button id="2000-button" onclick="changeStrings(2000)">2000</button>
-                <button id="3000-button" onclick="changeStrings(3000)">3000</button>
-                <p style="font-size: 0.7em; color: #999">Beware! Large numbers of strings might light your device on fire.
-                Even when the the strings aren't audible, they are all simulating.</p>
                 <section>
-                    <h4 style="margin-bottom: 5px">Strings per AudioWorklet</h4>
-                    <p style="font-size: 0.7em; color: #999">This allows you to get a feel for the overhead
-                    introduced by each AudioWorklet node. Having fewer nodes leads to fewer glitches.</a></p>
+                    <h4 style="margin-bottom: 5px; color: #888">Number of strings</h4>
+                    <button id="10-button" onclick="changeStrings(10)">10</button>
+                    <button id="25-button" onclick="changeStrings(25)">25</button>
+                    <button id="50-button" onclick="changeStrings(50)">50</button>
+                    <button id="100-button" onclick="changeStrings(100)">100</button>
+                    <button id="200-button" onclick="changeStrings(200)">200</button>
+                    <button id="250-button" onclick="changeStrings(250)">250</button>
+                    <button id="400-button" onclick="changeStrings(400)">400</button>
+                    <button id="600-button" onclick="changeStrings(600)">600</button>
+                    <button id="1000-button" onclick="changeStrings(1000)">1000</button>
+                    <button id="1500-button" onclick="changeStrings(1500)">1500</button>
+                    <button id="2000-button" onclick="changeStrings(2000)">2000</button>
+                    <button id="3000-button" onclick="changeStrings(3000)">3000</button>
+                    <p style="font-size: 0.7em; color: #999">⚠️ Choosing lots of strings might light your device on fire.
+                    Even when the the strings aren't audible, they are always simulating. The number of strings you can simulate
+                    without glitches and jank will depend on your device and browser.</p>
+                </section>
+                <section>
+                    <h4 style="margin-bottom: 5px; color: #888">Strings per AudioWorklet</h4>
+                    <p style="font-size: 0.7em; color: #999">This control allows you to get a feel for the overhead
+                    introduced by each AudioWorklet node. Using fewer AudioWorklet nodes to simulate the same number of strings 
+                    is more performant.</a></p>
                     <div>
                         <input type="radio" id="choice-1" name="ratio" value="1" onchange="changeRatio(1)" />
                         <label style="font-size: 0.8em;" for="choice-1">1 string per worklet</label>
@@ -64,7 +67,7 @@
                     </div>
                 </section>
                 <section>
-                    <h4 style="margin-bottom: 5px">Communication channel</h4>
+                    <h4 style="margin-bottom: 5px; color: #888">Communication channel</h4>
                     <p style="font-size: 0.7em; color: #999">There are two options for sending data between the audio rendering thread and the GUI (main) thread: 
                     MessagePort (which creates garbage) or using SharedArrayBuffers (which do not necessarily create garbage). When SharedArrayBuffer is selected, this page is 
                     using <a href="https://github.com/padenot/ringbuf.js">Paul Adenot's lock-free queue library.</a></p>
@@ -82,8 +85,10 @@
                     </p>
                 </section>
                 <section>
-                    <h4 style="margin-bottom: 5px">Audio processing language</h4>
-                    <p style="font-size: 0.7em; color: #999">JavaScript or WASM?</a></p>
+                    <h4 style="margin-bottom: 5px; color: #888">Audio processing language</h4>
+                    <p style="font-size: 0.7em; color: #999">This control allows you to select the language used
+                    for the DSP processing which simulates each string. Using WebAssembly (compiled from Rust) is more
+                    performant.</a></p>
                     <div>
                         <input type="radio" id="choice-js" name="lang" value="js" onchange="changeLang('port')" />
                         <label style="font-size: 0.8em;" for="choice-js">JavaScript</label>
@@ -94,14 +99,14 @@
                     </div>
                 </section>
                 <section>
-                    <h4 style="margin-bottom: 5px">Visualize string state <input id="vis-checkbox" type="checkbox" onchange="toggleStringVisualization()"/></h4>
+                    <h4 style="margin-bottom: 5px; color: #888">Visualize string state <input id="vis-checkbox" type="checkbox" onchange="toggleStringVisualization()"/></h4>
                     <p style="font-size: 0.7em; color: #999">Check this box to make the strings animate whenever they
                     are plucked. The animation is based on data which is produced in the audio-processing
                     simulation(s). Therefore, turning this off will improve performance, and allow you to 
                     potentially simulate more strings.</p>
                 </section>
                 <section id="webmidi-control">
-                    <h4>WebMidi</h4>
+                    <h4 style="margin-bottom: 5px; color: #888">WebMidi</h4>
                     <p style="font-size: 0.7em; color: #999">This browser does not support WebMidi</p>
                 </section>
             </div>
@@ -137,16 +142,10 @@
             const processorPath = window.lang === "js" ? "string-processor.js" : "string-processor-wasm.js";
             const processorName = window.lang === "js" ? "string-processor" : "string-processor-wasm";
 
-            const files = window.lang === "js"
-                ? [processorPath, 'ringbuf/index.js']
-                : [processorPath, 'ringbuf/index.js']
-
-            URLFromFiles(files).then((e) => {
+            URLFromFiles([processorPath, 'ringbuf/index.js']).then((e) => {
                 context.audioWorklet.addModule(e).then(() => {
-                    const audioNodes = [];
-                    window["audioNodes"] = audioNodes;
-                    const stringVisualizations = [];
-                    window["stringVisualizations"] = stringVisualizations;
+                    window.audioNodes = [];
+                    window.stringVisualizations = stringVisualizations = [];
                     
                     const nodeInfo = createAudioNodeDescriptions();
 
@@ -165,23 +164,27 @@
                             {
                                 processorOptions: {
                                     f0s,
-                                    visualize: window.visualizeStringState
+                                    visualize: window.visualize
                                 }
                             }
                         );
 
                         node.connect(context.destination);
 
-                        if (window.communicationChannel === "port") {
+                        if (window.channel === "port") {
                             node.port.onmessage = handleStringMessage.bind(this, j);
                         }
-                        else if (window.communicationChannel === "sab") {
+                        else if (window.channel === "sab") {
+                            const bytesPerParam = 5;
                             {
-                                let sharedBuffer = RingBuffer.getStorageForCapacity(32 * 100, Uint8Array);
+                                // See: https://github.com/padenot/ringbuf.js
+                                const paramCount = 200; // Amplitude and Vibration for 100 strings.
+                                let sharedBuffer = RingBuffer.getStorageForCapacity(
+                                    paramCount * bytesPerParam, Uint8Array);
                                 let ringBuffer = new RingBuffer(sharedBuffer, Uint8Array);
                                 let paramReader = new ParameterReader(ringBuffer);
                                 node.port.postMessage({
-                                    type: "shared-buffer",
+                                    type: "audio-to-gui-buffer",
                                     buffer: sharedBuffer,
                                 });
 
@@ -189,11 +192,13 @@
                             }
 
                             {
-                                let sharedBuffer = RingBuffer.getStorageForCapacity(31, Uint8Array);
+                                // See: https://github.com/padenot/ringbuf.js
+                                let sharedBuffer = RingBuffer.getStorageForCapacity(
+                                    window.ratio * bytesPerParam, Uint8Array);
                                 let ringBuffer = new RingBuffer(sharedBuffer, Uint8Array);
                                 let paramWriter = new ParameterWriter(ringBuffer);
                                 node.port.postMessage({
-                                    type: "shared-buffer-plucks",
+                                    type: "gui-to-audio-buffer",
                                     buffer: sharedBuffer,
                                 })
 
@@ -224,7 +229,7 @@
                     document.getElementById("swipe-button").disabled = false;
                     document.getElementById("swipe-button").style.display = "block";
 
-                    if (window.visualizeStringState) {
+                    if (window.visualize) {
                         requestAnimationFrame(animationFrame);
                     }
                 });
@@ -301,9 +306,8 @@
         }
 
         const animationFrame = () => {
-            if (window.communicationChannel === "sab") {
-                // variable to hold result of dequeue_change
-                let o = { index: 0, value: 0 };
+            if (window.channel === "sab") {
+                let o = { index: 0, value: 0 }; // variable to hold result of dequeue_change
                 audioNodes.forEach((node, nodeIndex) => {
                     while (node.paramReader.dequeue_change(o)) {
                         const isAmplitude = o.index % 2 === 0;
@@ -340,9 +344,9 @@
         
         const pluckString = (i) => {
             const nodeIndex = stringIndexToNodeIndex(i);
-            if (window.communicationChannel === "port") {
+            if (window.channel === "port") {
                 audioNodes[nodeIndex].port.postMessage({type: "play", stringIndex: i % window.ratio});
-            } else if (window.communicationChannel === "sab") {
+            } else if (window.channel === "sab") {
                 audioNodes[nodeIndex].paramWriter.enqueue_change(i % window.ratio, true);
             }
         }
@@ -366,27 +370,32 @@
         }
 
         const changeStrings = (number) => {
-            reloadWith(number, window.visualizeStringState, window.communicationChannel, window.ratio, window.lang);
+            window.numStrings = number;
+            reloadWithNewSettings();
         }
 
         const toggleStringVisualization = () => {
-            reloadWith(window.numStrings, !window.visualizeStringState, window.communicationChannel, window.ratio, window.lang);
+            window.visualize = !window.visualize;
+            reloadWithNewSettings();
         }
 
         const changeChannel = (channel) => {
-            reloadWith(window.numStrings, window.visualizeStringState, channel, window.ratio, window.lang);
+            window.channel = channel;
+            reloadWithNewSettings();
         }
 
         const changeRatio = (ratio) => {
-            reloadWith(window.numStrings, window.visualizeStringState, window.communicationChannel, ratio, window.lang);
+            window.ratio = ratio;
+            reloadWithNewSettings();
         }
 
         const changeLang = (lang) => {
-            reloadWith(window.numStrings, window.visualizeStringState, window.communicationChannel, window.ratio, lang);
+            window.lang = lang;
+            reloadWithNewSettings();
         }
 
-        const reloadWith = (strings, visualize, channel, ratio, lang) => {
-            const newUrl = `${window.location.origin}${window.location.pathname}?strings=${strings}&visualize=${visualize}&channel=${channel}&ratio=${ratio}&lang=${lang}`;
+        const reloadWithNewSettings = () => {
+            const newUrl = `${window.location.origin}${window.location.pathname}?strings=${window.numStrings}&visualize=${window.visualize}&channel=${window.channel}&ratio=${window.ratio}&lang=${window.lang}`;
             window.location.href = newUrl;
         }
 
@@ -453,8 +462,8 @@
         window.numStrings = numStrings;
         window.stringAmplitudes = new Array(numStrings).fill(0);
         window.stringVibrations = new Array(numStrings).fill(0);
-        window.visualizeStringState = visualizeStringState;
-        window.communicationChannel = communicationChannel;
+        window.visualize = visualizeStringState;
+        window.channel = communicationChannel;
         window.lang = lang;
         window.ratio = ratio;
         document.getElementById(`${numStrings}-button`).style.outline = "solid 2px hotpink";
