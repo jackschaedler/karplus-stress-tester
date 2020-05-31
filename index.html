@@ -442,9 +442,9 @@
             ? parseInt(urlParams.get('ratio'))
             : 100;
         
-        const lang = urlParams.get('lang') === "wasm"
-            ? "wasm"
-            : "js"
+        const lang = urlParams.get('lang') === "js"
+            ? "js"
+            : "wasm"
 
         const stringIndexToNodeIndex = (i) => {
             return Math.floor(i / window.ratio);
