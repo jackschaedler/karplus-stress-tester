@@ -81,7 +81,9 @@
                     </div>
                     <p style="font-size: 0.7em; color: #999">⚠️ You need to be using an up-to-date version of Chrome, or
                         Firefox Nightly with the "bypassCOOP_COEP.insecure.enabled"
-                        flag flipped on to use SharedArrayBuffers.
+                        flag flipped on to use SharedArrayBuffers. Make sure you turn the flag back off after viewing this site, 
+                        and don't turn this flag on in your browser that you use for anything 
+                        sensitive.
                     </p>
                 </section>
                 <section>
@@ -442,9 +444,9 @@
             ? parseInt(urlParams.get('ratio'))
             : 100;
         
-        const lang = urlParams.get('lang') === "wasm"
-            ? "wasm"
-            : "js"
+        const lang = urlParams.get('lang') === "js"
+            ? "js"
+            : "wasm"
 
         const stringIndexToNodeIndex = (i) => {
             return Math.floor(i / window.ratio);
