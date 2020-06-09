@@ -4,8 +4,13 @@
 name = "karplus"
 version = "0.1.0"
 dependencies = [
+ "karplus_string",
  "lazy_static",
 ]
+
+[[package]]
+name = "karplus_string"
+version = "0.1.0"
 
 [[package]]
 name = "lazy_static"

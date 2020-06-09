@@ -6,9 +6,11 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1.2.0"
+karplus_string = { path = "../karplus_string" }
 
 [lib]
 crate-type = ["cdylib"]
 
 [profile.release]
 lto = true
+

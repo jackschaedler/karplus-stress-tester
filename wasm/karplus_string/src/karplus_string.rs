@@ -29,23 +29,20 @@ impl KarplusString {
     pub fn new(sr: usize, f0: f32) -> Self {
         let ideal_delay_line_length = (sr as f32) / f0;
         let delay_line_length = ideal_delay_line_length.round() as usize;
-        let mut karplus = KarplusString {
+        let mut rng = Rand::new(0);
+        let excitation = (0..delay_line_length)
+            .map(|_| (rng.rand_float() - 0.5) * 1.5)
+            .collect();
+        KarplusString {
             delay_line: vec![0.0; delay_line_length],
             delay_line_index: 0,
             excitation_read_index: delay_line_length,
-            excitation: vec![0.0; delay_line_length],
+            excitation,
             filter_z: 0.0,
             envelope: 0.0,
             envelope_follower_coeff: ((0.01 as f32).ln() / (10.0 * (sr as f32) * 0.001)).exp(),
             f0: f0,
-        };
-
-        let mut rng = Rand::new(0);
-        for x in karplus.excitation.iter_mut() {
-            *x = (rng.rand_float() - 0.5) * 1.5;
         }
-
-        karplus
     }
 
     pub fn pluck(&mut self) {

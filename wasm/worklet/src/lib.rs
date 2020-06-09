@@ -1,9 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
+extern crate karplus_string;
 
 use std::sync::Mutex;
-
-mod karplus_string;
 use karplus_string::KarplusString;
 
 
@@ -24,8 +23,8 @@ impl Karplus {
 
     pub fn process(&mut self, out_ptr: *mut f32, size: usize) {
         let out_buf: &mut [f32] = unsafe {std::slice::from_raw_parts_mut(out_ptr, size) };
-        for i in 0..size {
-            out_buf[i] = self.tick();
+        for out in out_buf.iter_mut() {
+            *out = self.tick();
         }
     }
 
@@ -34,11 +33,11 @@ impl Karplus {
         for string in self.strings.iter_mut() {
             out += string.tick();
         }
-        return out
+        out
     }
 
     pub fn string_count(&mut self) -> usize {
-        return self.strings.len();
+        self.strings.len()
     }
 
     pub fn add_string(&mut self, sr: usize, f0: f32) {
@@ -50,7 +49,7 @@ impl Karplus {
     }
 
     pub fn amplitude(&mut self, i: usize) -> f32 {
-        return self.strings[i].envelope;
+        self.strings[i].envelope
     }
 
     pub fn vibration(&mut self, i: usize) -> f32 {
