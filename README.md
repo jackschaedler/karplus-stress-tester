@@ -67,9 +67,13 @@ The WebAssembly for this page was written in Rust. You can see the code inside t
 
 #### Building the WASM code
 
-Inside the `wasm` directory, run `./build.sh`. 
+Inside the `wasm/worklet` directory, run `./build.sh`.
 
 In order for this to work, you'll need to have Rust installed on your machine. In order to do that, you can follow the instructions here: https://www.rust-lang.org/tools/install. Once you've done that, ensure that the `wasm32-unknown-unknown` target is available on your machine by running `rustup target add wasm32-unknown-unknown`.
+
+#### Comparing to a desktop-application
+
+In the `rustapp` folder, there is code for a simple desktop application which uses `portaudio` and `gtk`. This app uses the same DSP code as the website, so you can (roughly) compare the difference in performance between running the DSP code in a desktop app vs. a browser-based app. If you want to change the number of strings that are simulated, you'll need to edit the code directly in `rustapp/src/portaudio_thread` and re-build. Also, I've only implemented the "pluck" button/feature in the desktop version.
 
 ## Thoughts/findings/insights
 
