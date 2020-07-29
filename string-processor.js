@@ -97,6 +97,8 @@ class StringProcessor extends AudioWorkletProcessor {
 
       if (output.length > 1) { throw new Error("This processor only expects mono"); }
 
+      outputChannel.fill(0.0);
+
       for (let s = 0; s < this.stringCount; ++s) {
         for (let i = 0; i < outputChannel.length; ++i) {
           const delayLineLength = this.delayLines[s].length;
