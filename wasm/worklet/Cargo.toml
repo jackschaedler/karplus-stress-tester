@@ -5,7 +5,6 @@ authors = ["jack"]
 edition = "2018"
 
 [dependencies]
-lazy_static = "1.2.0"
 karplus_string = { path = "../karplus_string" }
 
 [lib]

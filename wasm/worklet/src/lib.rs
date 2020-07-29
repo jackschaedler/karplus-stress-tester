@@ -1,8 +1,5 @@
-#[macro_use]
-extern crate lazy_static;
 extern crate karplus_string;
 
-use std::sync::Mutex;
 use karplus_string::KarplusString;
 
 
@@ -70,44 +67,44 @@ pub extern "C" fn alloc(size: usize) -> *mut f32 {
     return ptr as *mut f32;
 }
 
-lazy_static! {
-    static ref KARPLUS: Mutex<Karplus> = Mutex::new(Karplus::new());
+#[no_mangle]
+pub unsafe extern "C" fn create() -> *mut Karplus {
+    std::mem::transmute(Box::new(Karplus::new()))
 }
 
 #[no_mangle]
-pub extern "C" fn process(out_ptr: *mut f32, size: usize) {
-    let mut karplus = KARPLUS.lock().unwrap();
+pub unsafe extern "C" fn process(karplus: *mut Karplus, out_ptr: *mut f32, size: usize) {
+    let karplus = &mut *karplus;
     karplus.process(out_ptr, size);
 }
 
 #[no_mangle]
-pub extern "C" fn add_string(sr: usize, f0: f32) {
-    let mut karplus = KARPLUS.lock().unwrap();
+pub unsafe extern "C" fn add_string(karplus: *mut Karplus, sr: usize, f0: f32) {
+    let karplus = &mut *karplus;
     karplus.add_string(sr, f0);
 }
 
 #[no_mangle]
-pub extern "C" fn pluck_string(i: usize) {
-    let mut karplus = KARPLUS.lock().unwrap();
+pub unsafe extern "C" fn pluck_string(karplus: *mut Karplus, i: usize) {
+    let karplus = &mut *karplus;
     karplus.pluck_string(i);
 }
 
 #[no_mangle]
-pub extern "C" fn amplitude(i: usize) -> f32 {
-    let mut karplus = KARPLUS.lock().unwrap();
+pub unsafe extern "C" fn amplitude(karplus: *mut Karplus, i: usize) -> f32 {
+    let karplus = &mut *karplus;
     return karplus.amplitude(i);
 }
 
 #[no_mangle]
-pub extern "C" fn vibration(i: usize) -> f32 {
-    let mut karplus = KARPLUS.lock().unwrap();
+pub unsafe extern "C" fn vibration(karplus: *mut Karplus, i: usize) -> f32 {
+    let karplus = &mut *karplus;
     return karplus.vibration(i);
 }
 
 #[no_mangle]
 pub extern "C" fn check() -> f32 {
-    let mut karplus = KARPLUS.lock().unwrap();
-    return karplus.check();
+    return 42.0;
 }
 
 

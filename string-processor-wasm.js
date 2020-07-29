@@ -24,7 +24,7 @@ class StringProcessorWASM extends AudioWorkletProcessor {
     handleMessage(event) {
       if (event.data.type === "play") {
         if (this.wasm) {
-          this.wasm.exports.pluck_string(event.data.stringIndex);
+          this.wasm.exports.pluck_string(this._handle, event.data.stringIndex);
         }
       }
       else if (event.data.type === "audio-to-gui-buffer") {
@@ -40,12 +40,13 @@ class StringProcessorWASM extends AudioWorkletProcessor {
         );
         this.wasm = instance;
         this._buffer_size = 128;
+        this._handle = this.wasm.exports.create();
         // This needs to be before the call to
         // alloc. If you do this afterwards, the
         // WASM heap will have grown, and the ptr
         // will be invalidated/detached.
         this.f0s.forEach(f0 => {
-          this.wasm.exports.add_string(sampleRate, f0);
+          this.wasm.exports.add_string(this._handle, sampleRate, f0);
         });
         // See: https://github.com/padenot/wac-19-audioworklet-workshop/tree/master/wasm-audio-nogc
         this._outPtr = this.wasm.exports.alloc(this._buffer_size);
@@ -65,13 +66,13 @@ class StringProcessorWASM extends AudioWorkletProcessor {
       if (this.parameterReader) {
         let o = { index: 0, value: 0 };
         while (this.parameterReader.dequeue_change(o)) {
-          this.wasm.exports.pluck_string(o.index);
+          this.wasm.exports.pluck_string(this._handle, o.index);
         }
       }
 
       if (output.length > 1) { throw new Error("This processor only expects mono"); }
 
-      this.wasm.exports.process(this._outPtr, this._buffer_size);
+      this.wasm.exports.process(this._handle, this._outPtr, this._buffer_size);
       outputChannel.set(this._outBuf);
 
       this.analysisCounter += outputChannel.length;
@@ -80,8 +81,8 @@ class StringProcessorWASM extends AudioWorkletProcessor {
         this.analysisCounter = this.analysisCounter % this.analysisCounterTrigger;
 
         for (let s = 0; s < this.stringCount; s++) {
-          const amplitude = this.wasm.exports.amplitude(s);
-          const vibration = this.wasm.exports.vibration(s);
+          const amplitude = this.wasm.exports.amplitude(this._handle, s);
+          const vibration = this.wasm.exports.vibration(this._handle, s);
 
           if (this.parameterWriter) {
             // Send back data using SharedArrayBuffer
