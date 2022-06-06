@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 karplus_string = { path = "../wasm/karplus_string" }
-crossbeam-channel = "0.3"
+crossbeam-channel = "0.4"
 gtk = "0.5"
 audio_thread_priority = "0.3"
 portaudio = "0.7.0"
