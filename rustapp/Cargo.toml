@@ -10,7 +10,7 @@ crossbeam-channel = "0.3"
 gtk = "0.5"
 audio_thread_priority = "0.3"
 portaudio = "0.7.0"
-rand = "0.7.3"
+rand = "0.9.3"
 
 [profile.release]
 lto = true
